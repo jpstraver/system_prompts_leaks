@@ -1,0 +1,38 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-upstream-prod
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge upstream main into prod
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          ref: prod
+          fetch-depth: 0
+
+      - name: Fetch and merge upstream
+        run: |
+          git remote add upstream https://github.com/asgeirtj/system_prompts_leaks.git
+          git fetch --no-tags upstream main
+
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Fork is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git merge --no-edit upstream/main
+          git push origin HEAD:prod
